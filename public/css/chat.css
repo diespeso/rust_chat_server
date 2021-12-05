@@ -1,0 +1,13 @@
+.chat {
+    background-color: whitesmoke;
+    height: 400px;
+    width: 80%;
+}
+
+.message_card {
+    background-color: lightblue;
+}
+
+.mes_id {
+    text-decoration: bold;
+}
