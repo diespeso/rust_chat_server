@@ -10,11 +10,25 @@ use actix::{Actor, ActorFuture,
 
 use actix_web_actors::ws;
 
+use serde::{Serialize};
+use serde_json;
+
 //messages
-#[derive(Message)]
+#[derive(Message, Serialize)]
 #[rtype(result = "()")]
 /// WebSocket Message, A Message to a WebSocket in the client side(see public/script/chat.js)
-pub struct WSockMess(pub String); 
+pub struct WSockMess {
+    pub msg: String,
+    pub sender: String, //id
+}
+
+impl WSockMess {
+    pub fn new(msg: String, sender: String) -> Self {
+        Self {
+            msg, sender
+        }
+    }
+}
 
 #[derive(Message)]
 #[rtype(result = "()")]
@@ -102,7 +116,7 @@ impl Handler<WSockMess> for ChatSock {
 
     /// A Chatsock will receive the message inside a WSockMess and send it to the client side websocket
     fn handle(&mut self, msg: WSockMess, ctx: &mut Self::Context) {
-        ctx.text(msg.0); //from chatsocket in the server side to websocket in the client side
+        ctx.text(serde_json::to_string(&msg).expect("Failed to make json from WSockMessage on ChatSock")); //from chatsocket in the server side to websocket in the client side
     }
 }
 
@@ -201,16 +215,16 @@ impl Handler<ChatSockMess> for Feed {
 
     // how to handle a client message sent to the feed
     fn handle(&mut self, msg: ChatSockMess, ctx: &mut Self::Context) {
-        let mut texto = &msg.msg.split(':').map( //TODO:BUG: This makes it imposible to send emoticons like: :c :) or any other
+        /*let mut texto = &msg.msg.split(':').map( //TODO:BUG: This makes it imposible to send emoticons like: :c :) or any other
             |s| {
                 s.to_owned()
             }
-        ).collect::<Vec<String>>(); //split: before :, and after : is the message contents
-        if texto.len() > 1 { //nonempty message split
+        ).collect::<Vec<String>>(); //split: before :, and after : is the message contents*/
+        if msg.msg.clone().len() as i32 > 1 { //nonempty message split
             //send the message received to all other chatsockets in the feed 
             for (_, v) in &mut self.clients {
                 if let Err(err) = v.do_send(
-                    WSockMess("all:".to_owned() + &msg.id.clone() + ":" + &texto[1].clone())) { //wsockmessage fort the chatsock to handle
+                    WSockMess::new(msg.msg.clone(), msg.id.clone())) { //wsockmessage fort the chatsock to handle
                     println!("Couldnt send ChatSockMess to all participants: {}", err);
                 }
             }

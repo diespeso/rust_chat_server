@@ -12,16 +12,13 @@ window.onload = function() {
 
     socket.onmessage = function(msg) {
         console.log("server: " + msg.data); //debug
-        let instr = msg.data.split(":"); //before : theres an specification of who should see the message, this is prob bad (sorry)
-        if(instr[0] == "all") {
-            //add message to general feed
-            document.getElementById("feed_view").innerHTML = document.getElementById("feed_view").innerHTML + gen_message_card(instr[1], instr[2]); 
-        }
+        let message = JSON.parse(msg.data);
+        document.getElementById("feed_view").innerHTML += gen_message_card(message.sender, message.msg);
     }
 }
 
 function send_message() {
-    str_msg = "0:" + document.getElementsByName("message")[0].value; //get message in textbox
+    str_msg = document.getElementsByName("message")[0].value; //get message in textbox
     console.log(str_msg);
     socket.send(str_msg);
 }

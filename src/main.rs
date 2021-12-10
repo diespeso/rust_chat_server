@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use handlebars::Handlebars;
 use serde_json::json;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use rand::Rng;
 
@@ -258,6 +258,7 @@ fn update_contador(data: Arc<Mutex<Contador>>) -> () {
 
 /// NOT USED FOR THIS PROJECT, OLD CODE, IGNORE ENDS///
 
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     //not relevant
@@ -266,6 +267,7 @@ async fn main() -> std::io::Result<()> {
     let th = thread::spawn(move || {
         update_contador(data);
     });
+
     //relevant
     let feed = Feed::new().start();
     HttpServer::new(move || {
