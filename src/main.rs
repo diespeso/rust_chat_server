@@ -18,9 +18,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::net::TcpListener;
 
-mod chat;
+pub mod chat;
 
-pub use crate::chat::*;
+use chat::*;
 
 static IP: &str = "127.0.0.1"; //localhost
 static PORT: u16 = 8080; //port
