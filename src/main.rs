@@ -22,10 +22,11 @@ mod chat;
 
 pub use crate::chat::*;
 
-static IP: &str = "127.0.0.1";
-static PORT: u16 = 8080;
+static IP: &str = "127.0.0.1"; //localhost
+static PORT: u16 = 8080; //port
 
 #[get("/")]
+/// Get main page
 async fn index(req: HttpRequest) -> Result<NamedFile> {
     let path: PathBuf = "./public/html/index.html".parse().expect("Path no generado");
     Ok(NamedFile::open(path)?)
@@ -33,6 +34,7 @@ async fn index(req: HttpRequest) -> Result<NamedFile> {
 
 //getting info from the path
 #[get("/saludar/{nombre}")]
+/// NOT USED FOR THIS PROJECT, OLD CODE, IGNORE
 async fn saludar(info: web::Path<(String,)>) -> HttpResponse {
     let mut hb = Handlebars::new();
     hb.register_template_file("saludar", "./public/html/saludar.hbs").expect("Fallo al registrar template");
@@ -43,12 +45,14 @@ async fn saludar(info: web::Path<(String,)>) -> HttpResponse {
 }
 
 #[get("/pedir_rfc")]
+/// NOT USED FOR THIS PROJECT, OLD CODE, IGNORE
 async fn pedir_rfc(req: HttpRequest) -> Result<NamedFile> {
     let path: PathBuf = "./public/html/pedir_rfc.html".parse().expect("Path no generado");
     Ok(NamedFile::open(path)?)
 }
 
 #[derive(Deserialize)]
+/// NOT USED FOR THIS PROJECT, OLD CODE, IGNORE
 struct FormRfc {
     ap_pat: String,
     ap_mat: String,
@@ -57,6 +61,7 @@ struct FormRfc {
 }
 
 #[post("/mostrar_rfc")]
+/// NOT USED FOR THIS PROJECT, OLD CODE, IGNORE
 async fn mostrar_rfc(info: web::Form<FormRfc>) -> HttpResponse {
     let mut hb = Handlebars::new();
     hb.register_template_file("mostrar_rfc", "./public/html/mostrar_rfc.hbs").expect("Fallo en registrar template");
@@ -83,6 +88,7 @@ async fn mostrar_rfc(info: web::Form<FormRfc>) -> HttpResponse {
 }
 
 #[get("/css/{archivo}.css")]
+/// Get any css file in the public folder
 async fn serve_css(path: web::Path<String>) -> Result<NamedFile> {
     println!("{}", path.clone());
     Ok(NamedFile::open(
@@ -91,13 +97,14 @@ async fn serve_css(path: web::Path<String>) -> Result<NamedFile> {
 }
 
 #[get("/script/{archivo}.js")]
+/// Get any js file in the public folder
 async fn serve_js(path: web::Path<String>) -> Result<NamedFile> {
     println!("{}", path.clone());
     Ok(NamedFile::open(
         format!("./public/script/{}.js", path.into_inner())
     )?)
 }
-
+/*
 #[derive(Debug)]
 struct ComSocket;
 
@@ -122,22 +129,26 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ComSocket {
         //ctx.write_raw(ws::Message::Text("perra".to_owned()))
     }
 }
+*/
 
-
-#[get("/ws/init/{username}")] //todo:agregar path de username
+#[get("/ws/init/{username}")]
+/// The client side chat.js script will attempt to get a websocket using this
 async fn serve_ws(req: HttpRequest,
     stream: web::Payload,
     data: web::Data<Addr<Feed>>,
     username: web::Path<(String,)>) -> Result<HttpResponse, Error> {
-    let sock = ChatSock::new(username.into_inner().0, data.get_ref().clone());
-    ws::start(sock, &req, stream)
+
+    let sock = ChatSock::new(username.into_inner().0, data.get_ref().clone()); //make a chatsock for the new connection
+    ws::start(sock, &req, stream) //start a websocket using the chatsock created and send it to the client side to start the websocket comm
 }
 
 #[derive(Deserialize)]
+/// Form data wrapper for the user id form
 struct FormUser {
     pub user: String,
 }
 
+/// This actor sends idcheck messages to the server to verify that a username is not being used already.
 pub struct IdChecker {
     pub id: String,
     pub addr_feed: Addr<Feed>,
@@ -158,6 +169,7 @@ impl IdChecker {
 impl Actor for IdChecker {
     type Context = Context<Self>;
 
+    /// send the checkId message the moment the actor is created
     fn started(&mut self, ctx: &mut Self::Context) {
         println!("hellow");
         self.addr_feed.send(chat::CheckId{id:self.id.clone()})
@@ -177,21 +189,23 @@ impl Actor for IdChecker {
     }
 }
 
-#[post("/enter_chat")] //serves the chat.html page only
+#[post("/enter_chat")]
+/// Attempt to enter the chat, will never work directly, must be served after login, i dont know how sessions work (yet)
 async fn enter_chat(req: HttpRequest,
     form: web::Form<FormUser>, data: web::Data<Addr<Feed>>)
     -> HttpResponse {
     
-    let username = form.into_inner().user;
+    let username = form.into_inner().user; //username entered by client side
 
-    let res = data.get_ref().send(CheckId{id: username.clone()}).await;
+    let res = data.get_ref().send(CheckId{id: username.clone()}).await; //res: is the username taken?
     match res {
         Ok(res) => {
-            if res {
+            if res { //show error page: username taken
                 HttpResponse::build("400".parse().expect("Bad StatusCode"))
                     .body("Invalid username")
-            } else {
+            } else { //serve chat page
                 let mut hb = Handlebars::new();
+                //render personalized chat page
                 hb.register_template_file("chat", "./public/html/chat.hbs").expect("Failed to register chat user template");
                 let body = hb.render("chat", &json!({"username": username})).expect("failed to render chat page");
                 HttpResponse::Ok().body(body)
@@ -212,10 +226,12 @@ async fn enter_chat(req: HttpRequest,
     
 }
 
+/// Just a counter that i added to test threads
 struct Contador {
     pub cont: i32
 }
 
+/// NOT USED FOR THIS PROJECT, OLD CODE, IGNORE STARTS ///
 impl Contador {
     pub fn new() -> Self {
         Self {
@@ -240,21 +256,18 @@ fn update_contador(data: Arc<Mutex<Contador>>) -> () {
 }
 
 
-
+/// NOT USED FOR THIS PROJECT, OLD CODE, IGNORE ENDS///
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    //not relevant
     let data = Arc::new(Mutex::new(Contador::new()));
-
     let punt = Arc::clone(&data);
-
     let th = thread::spawn(move || {
         update_contador(data);
     });
-
+    //relevant
     let feed = Feed::new().start();
-
-
     HttpServer::new(move || {
         App::new()
             .data(punt.clone())
@@ -269,7 +282,7 @@ async fn main() -> std::io::Result<()> {
             .service(enter_chat)
     })
     .bind((IP, PORT))?
-    .listen(TcpListener::bind("192.168.1.64:8080")?)?
+    .listen(TcpListener::bind("192.168.1.64:8080")?)? //not sure of bind vs listen but this makes it work, ip: of the pc running the server
     .run()
     .await
 
